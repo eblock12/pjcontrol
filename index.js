@@ -132,9 +132,15 @@ function tickCommandQueue() {
                 command.failure();
                 activeCommand = null;
             } else {
-                portIsWaiting = true;
-                log.debug('Sent ' + bytesSent + ' bytes');
                 activeCommand = command;
+                log.debug('Sent ' + bytesSent + ' bytes');
+                if (commandNeedsReply(command.bytes)) { 
+                    portIsWaiting = true;
+                    activeCommand = command;
+                } else {
+                    activeCommand = null;
+                    command.success();
+                }
             }
             portIsSending = false;
             setImmediate(tickCommandQueue);
@@ -144,6 +150,17 @@ function tickCommandQueue() {
 
 function computeChecksum(buf) { 
     return (buf[1] | buf[2] | buf[3] | buf[4] | buf[5]) & 0xFF;
+}
+
+function commandNeedsReply(buf) {
+    switch (buf[1]) {
+        // Projector sends no response for IR commands
+        case 0x17:
+        case 0x19:
+        case 0x1B:
+            return false;
+    }
+    return true;
 }
 
 function bytesAsString(bytes) {
