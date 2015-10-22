@@ -2,6 +2,7 @@ var serialport = require('serialport');
 var log = require('simple-node-logger').createSimpleLogger('pjcontrol.log');
 var Enum = require('enum');
 var argv = require('yargs').argv;
+var express = require('express');
 
 if (argv.debug) {
     log.setLevel('debug');
@@ -220,5 +221,51 @@ function pollPowerStatus() {
     });
 }
 
+function sendPowerOn(success, failure) {
+    sendCommand(0x172E, false /*isGet*/, 0x0, function(msg) {
+        log.info('Sent "Power On" command');
+        success();
+    }, function() {
+        failure();
+    });
+}
+
+function sendPowerOff(success, failure) {
+    sendCommand(0x172F, false /*isGet*/, 0x0, function(msg) {
+        log.info('Sent "Power Off" command');
+        success();
+    }, function() {
+        failure();
+    });
+}
+
 pollPowerStatus();
+
+var app = express();
+var router = express.Router();
+
+router.get('/statusPower', function(req, res) {
+    res.json({ value: projector.powerStatus.toString() });
+});
+
+router.post('/powerOn', function(req, res) {
+    sendPowerOn(function() {
+        res.status(200).send();
+    }, function() {
+        res.status(500).send();
+    });
+});
+
+router.post('/powerOff', function(req, res) {
+    sendPowerOff(function() {
+        res.status(200).send();
+    }, function() {
+        res.status(500).send();
+    });
+});
+
+app.use('/api', router);
+
+app.listen(8080);
+log.info('Listening for HTTP requests on port 8080...');
 
