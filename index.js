@@ -134,12 +134,15 @@ function tickCommandQueue() {
             } else {
                 activeCommand = command;
                 log.debug('Sent ' + bytesSent + ' bytes');
-                if (commandNeedsReply(command.bytes)) { 
-                    portIsWaiting = true;
-                    activeCommand = command;
-                } else {
-                    activeCommand = null;
-                    command.success();
+                portIsWaiting = true;
+                activeCommand = command;
+                if (!commandNeedsReply(command.bytes)) { 
+                    // when no reply is expected (IR command), add a 45 msec wait
+                    setTimeout(function() {
+                        portIsWaiting = false;
+                        activeCommand = null;
+                        command.success();
+                    }, 45);
                 }
             }
             portIsSending = false;
